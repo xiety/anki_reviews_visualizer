@@ -89,7 +89,7 @@ def process():
 
     cards = []
 
-    for card_raw in mw.col.db.all(f"select c.id from cards c where c.queue = 2 and c.did = {deck_id}"): #on review
+    for card_raw in mw.col.db.all(f"select c.id from cards c where c.queue != 0 and c.did = {deck_id}"): #not new
         card_id = card_raw[0]
 
         #card_anki = mw.col.get_card(card_id)
