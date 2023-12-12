@@ -10,7 +10,6 @@ from datetime import datetime, date
 
 ELEMENT_ID = 'REVIEWS_VISUALIZER'
 
-
 @dataclass
 class Revlog:
     datetime: datetime
@@ -33,8 +32,11 @@ def create_revlog(a):
 
 
 def create_plot(cards: List[Card]):
-    box_width = 4
-    box_height = 4
+    config = mw.addonManager.getConfig(__name__)
+
+    box_width = config['box_width']
+    box_height = config['box_height']
+    image_height = config['image_height']
 
     max_date = cards[0].min_date
 
@@ -55,7 +57,7 @@ def create_plot(cards: List[Card]):
     max_x += box_width + 1
 
     html = ''
-    html += '<div style="overflow: scroll; width: 100%; height: 450px; border: 1px solid black">'
+    html += f'<div style="overflow: scroll; width: 100%; height: {image_height}; border: 1px solid black">'
     html += f'<svg id="{ELEMENT_ID}" width="{max_x}" height="{y}">'
     html += '<style>.a1 { fill: red; } .a2 { fill: blue; } .a3 { fill: green; } .a4 { fill: yellow; }</style>'
     html += content
@@ -83,6 +85,9 @@ def webview_did_inject_style_into_page(webview: AnkiWebView):
 
 
 def process():
+    config = mw.addonManager.getConfig(__name__)
+    card_limit = config['card_limit']
+
     deck_anki = mw.col.decks.current()
     #deck_name = deck_anki['name']
     deck_id = deck_anki['id']
@@ -109,7 +114,10 @@ def process():
             cards.append(Card(card_id, min_date, question, items))
 
     if len(cards) > 0:
-        cards.sort(key=lambda x: x.min_date, reverse=True)
+        cards.sort(key=lambda x: (x.min_date, x.card_id), reverse=True)
+
+        if card_limit != -1:
+            cards = cards[:card_limit]
 
         return create_plot(cards)
 
