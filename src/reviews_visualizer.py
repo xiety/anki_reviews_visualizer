@@ -103,15 +103,17 @@ def process():
 
         items = [min(group, key=lambda x: x.datetime) for _, group in groupby(revlogs, lambda x: x.date)]
 
-        min_date = min(items, key=lambda x: x.date).date
+        if len(items) > 0:
+            min_date = min(items, key=lambda x: x.date).date
 
-        cards.append(Card(card_id, min_date, question, items))
+            cards.append(Card(card_id, min_date, question, items))
 
-    cards.sort(key=lambda x: x.min_date, reverse=True)
+    if len(cards) > 0:
+        cards.sort(key=lambda x: x.min_date, reverse=True)
 
-    html = create_plot(cards)
+        return create_plot(cards)
 
-    return html
+    return ''
 
 
 #gui_hooks.webview_will_set_content.append(webview_will_set_content)
