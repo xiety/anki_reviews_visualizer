@@ -2,6 +2,7 @@ from typing import List
 
 from aqt import gui_hooks, mw
 from aqt.webview import WebContent, AnkiWebView
+from anki.utils import ids2str
 from os.path import basename
 
 from itertools import groupby
@@ -93,7 +94,9 @@ def process():
     cards = []
     max_date = None
 
-    for card_raw in mw.col.db.all(f"select c.id from cards c where c.queue != 0 and c.did = {deck_id}"): #not new
+    dids = [id for (_, id) in mw.col.decks.deck_and_child_name_ids(deck_id)]
+
+    for card_raw in mw.col.db.all(f"select c.id from cards c where c.queue != 0 and c.did in {ids2str(dids)}"): #not new
         card_id = card_raw[0]
 
         #card_anki = mw.col.get_card(card_id)
