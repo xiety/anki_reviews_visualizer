@@ -31,14 +31,12 @@ def create_revlog(a):
     return Revlog(datetime.fromtimestamp(a[0]/1000), date.fromtimestamp(a[0]/1000), a[1], a[2])
 
 
-def create_plot(cards: List[Card]):
+def create_plot(cards: List[Card], max_date: date):
     config = mw.addonManager.getConfig(__name__)
 
     box_width = config['box_width']
     box_height = config['box_height']
     image_height = config['image_height']
-
-    max_date = cards[0].min_date
 
     content = ''
     y = 0
@@ -93,6 +91,7 @@ def process():
     deck_id = deck_anki['id']
 
     cards = []
+    max_date = None
 
     for card_raw in mw.col.db.all(f"select c.id from cards c where c.queue != 0 and c.did = {deck_id}"): #not new
         card_id = card_raw[0]
@@ -111,6 +110,11 @@ def process():
         if len(items) > 0:
             min_date = min(items, key=lambda x: x.date).date
 
+            date = max(items, key=lambda x: x.date).date
+
+            if max_date is None or date > max_date:
+                max_date = date
+
             cards.append(Card(card_id, min_date, question, items))
 
     if len(cards) > 0:
@@ -119,7 +123,7 @@ def process():
         if card_limit != -1:
             cards = cards[:card_limit]
 
-        return create_plot(cards)
+        return create_plot(cards, max_date)
 
     return ''
 
