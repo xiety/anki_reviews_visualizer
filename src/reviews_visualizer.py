@@ -69,7 +69,7 @@ def create_plot(cards: List[Card], max_date: date):
 def webview_will_set_content(web_content: WebContent, context):
     context_name = type(context).__name__
 
-    if context_name == 'DeckBrowser':
+    if context_name == 'Overview':
         html = process()
         web_content.body += html
 
@@ -131,5 +131,5 @@ def process():
     return ''
 
 
-#gui_hooks.webview_will_set_content.append(webview_will_set_content)
+gui_hooks.webview_will_set_content.append(webview_will_set_content)
 gui_hooks.webview_did_inject_style_into_page.append(webview_did_inject_style_into_page)
