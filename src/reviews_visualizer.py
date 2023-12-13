@@ -23,6 +23,7 @@ class Revlog:
 class Card:
     card_id: int #long?
     min_date: date
+    max_date: date
     question: str
     logs: List[Revlog]
 
@@ -92,7 +93,7 @@ def process():
     deck_id = deck_anki['id']
 
     cards = []
-    max_date = None
+    global_max_date = None
 
     dids = [id for (_, id) in mw.col.decks.deck_and_child_name_ids(deck_id)]
 
@@ -112,21 +113,26 @@ def process():
 
         if len(items) > 0:
             min_date = min(items, key=lambda x: x.date).date
+            max_date = max(items, key=lambda x: x.date).date
 
-            date = max(items, key=lambda x: x.date).date
+            if global_max_date is None or max_date > global_max_date:
+                global_max_date = max_date
 
-            if max_date is None or date > max_date:
-                max_date = date
-
-            cards.append(Card(card_id, min_date, question, items))
+            cards.append(Card(card_id, min_date, max_date, question, items))
 
     if len(cards) > 0:
-        cards.sort(key=lambda x: (x.min_date, x.card_id), reverse=True)
+        config = mw.addonManager.getConfig(__name__)
+        order_by = config['order_by']
+
+        if order_by == 'max_date':
+            cards.sort(key=lambda x: (x.max_date, x.card_id), reverse=True)
+        else:
+            cards.sort(key=lambda x: (x.min_date, x.card_id), reverse=True)
 
         if card_limit != -1:
             cards = cards[:card_limit]
 
-        return create_plot(cards, max_date)
+        return create_plot(cards, global_max_date)
 
     return ''
 
