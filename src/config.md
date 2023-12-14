@@ -4,5 +4,5 @@
 - `due_days` - number of days to add to the left of image to show due cards (default: `7`)
 - `image_height` - size of the image block inside anki interface in html format (default: `"450px"`)
 - `order_by` - cards order, can be one of `min_date`, `max_date`, `due_date` or mix (default: `"min_date, due_date"`)
-- `order_reverse` - reverse order direction, can be `true` or `false` (default: true)
-- `show_line` - show separator before due days (default: true)
+- `order_reverse` - reverse order direction, can be `true` or `false` (default: `true`)
+- `show_line` - show separator before due days (default: `true)
