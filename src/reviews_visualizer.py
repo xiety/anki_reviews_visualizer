@@ -5,9 +5,11 @@ from aqt.webview import WebContent, AnkiWebView
 from anki.utils import ids2str
 from os.path import basename
 
+import time
+
 from itertools import groupby
 from dataclasses import dataclass
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 
 ELEMENT_ID = 'REVIEWS_VISUALIZER'
 
@@ -24,6 +26,7 @@ class Card:
     card_id: int #long?
     min_date: date
     max_date: date
+    due_date: date
     question: str
     logs: List[Revlog]
 
@@ -39,13 +42,22 @@ def create_plot(cards: List[Card], max_date: date):
     box_width = config['box_width']
     box_height = config['box_height']
     image_height = config['image_height']
+    due_days = config['due_days']
+    show_line = config['show_line']
 
     content = ''
     y = 0
     max_x = 0
 
+    if due_days > 0:
+        max_date += timedelta(days=due_days)
+
     for card in cards:
         onclick = f"javascript:pycmd('revhm_browse:cid:{card.card_id}')"
+
+        if card.due_date is not None and card.due_date < max_date:
+            x = (max_date - card.due_date).days * (box_width + 1)
+            content += f'<rect class="due" x="{x}" y="{y}" width="{box_width}" height="{box_height}" onclick=\"{onclick}\"><title>{card.due_date}</title></rect>'
 
         for log in card.logs:
             x = (max_date - log.date).days * (box_width + 1)
@@ -58,8 +70,13 @@ def create_plot(cards: List[Card], max_date: date):
 
     html = ''
     html += f'<div style="overflow: scroll; width: 100%; height: {image_height}; border: 1px solid black">'
-    html += f'<svg id="{ELEMENT_ID}" width="{max_x}" height="{y}">'
-    html += '<style>.a1 { fill: red; } .a2 { fill: blue; } .a3 { fill: green; } .a4 { fill: yellow; }</style>'
+    html += f'<svg id="{ELEMENT_ID}" width="{max_x}" height="{y}" shape-rendering="crispEdges">'
+    html += '<style>.a1 { fill: red; } .a2 { fill: blue; } .a3 { fill: green; } .a4 { fill: yellow; } .due { fill: gray; } .max_date { stroke: gray; }</style>'
+
+    if show_line:
+        x = due_days * (box_width + 1)
+        html += f'<line x1={x} y1={0} x2={x} y2={y} class="max_date" />'
+
     html += content
     html += '</svg>'
     html += '</div>'
@@ -68,20 +85,29 @@ def create_plot(cards: List[Card], max_date: date):
 
 
 def webview_will_set_content(web_content: WebContent, context):
-    context_name = type(context).__name__
+    try:
+        context_name = type(context).__name__
 
-    if context_name == 'Overview':
-        html = process()
-        web_content.body += html
+        if context_name == 'Overview':
+            html = process()
+            web_content.body += html
+    except:
+        pass
 
 
 def webview_did_inject_style_into_page(webview: AnkiWebView):
-    page = basename(webview.page().url().path())
+    try:
+        page = basename(webview.page().url().path())
 
-    if page == "congrats.html":
-        html = process()
-        js = f'if (document.getElementById("{ELEMENT_ID}") == null) document.body.innerHTML += `{html}`'
-        webview.eval(js)
+        if page == "congrats.html":
+            html = process()
+            js = f'if (document.getElementById("{ELEMENT_ID}") == null) document.body.innerHTML += `{html}`'
+            webview.eval(js)
+    except:
+        pass
+
+def attr_sort(attrs: List[str]):
+    return lambda x: [getattr(x, attr) for attr in attrs]
 
 
 def process():
@@ -97,8 +123,10 @@ def process():
 
     dids = [id for (_, id) in mw.col.decks.deck_and_child_name_ids(deck_id)]
 
-    for card_raw in mw.col.db.all(f"select c.id from cards c where c.queue != 0 and c.did in {ids2str(dids)}"): #not new
+    for card_raw in mw.col.db.all(f"select c.id, c.due, c.queue from cards c where c.queue != 0 and c.did in {ids2str(dids)}"): #not new
         card_id = card_raw[0]
+        due = card_raw[1]
+        queue = card_raw[2]
 
         #card_anki = mw.col.get_card(card_id)
         #question = card_anki.question()
@@ -118,16 +146,22 @@ def process():
             if global_max_date is None or max_date > global_max_date:
                 global_max_date = max_date
 
-            cards.append(Card(card_id, min_date, max_date, question, items))
+            try:
+                due_date = (datetime.now() + timedelta(days=due - mw.col.sched.today)).date() if queue != -1 else None
+            except:
+                due_date = None
+
+            cards.append(Card(card_id, min_date, max_date, due_date, question, items))
 
     if len(cards) > 0:
         config = mw.addonManager.getConfig(__name__)
         order_by = config['order_by']
+        order_reverse = config['order_reverse']
 
-        if order_by == 'max_date':
-            cards.sort(key=lambda x: (x.max_date, x.card_id), reverse=True)
-        else:
-            cards.sort(key=lambda x: (x.min_date, x.card_id), reverse=True)
+        order_by_list = [a.strip() for a in order_by.split(',')]
+        order_by_list.append('card_id')
+
+        cards.sort(key=attr_sort(order_by_list), reverse=order_reverse)
 
         if card_limit != -1:
             cards = cards[:card_limit]

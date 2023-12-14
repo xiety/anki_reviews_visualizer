@@ -2,6 +2,9 @@
     "box_width": 4,
     "box_height": 4,
     "card_limit": -1,
+    "due_days": 7,
     "image_height": "450px",
-    "order_by": "min_date"
+    "order_by": "min_date, due_date",
+    "order_reverse": true,
+    "show_line": true
 }
