@@ -55,7 +55,7 @@ def create_plot(cards: List[Card], max_date: date):
     for card in cards:
         onclick = f"javascript:pycmd('revhm_browse:cid:{card.card_id}')"
 
-        if card.due_date is not None and card.due_date < max_date:
+        if card.due_date != date.min:
             x = (max_date - card.due_date).days * (box_width + 1)
             content += f'<rect class="due" x="{x}" y="{y}" width="{box_width}" height="{box_height}" onclick=\"{onclick}\"><title>{card.due_date}</title></rect>'
 
@@ -107,6 +107,7 @@ def webview_did_inject_style_into_page(webview: AnkiWebView):
         pass
 
 def attr_sort(attrs: List[str]):
+    #return lambda x: [(getattr(x, attr) is None, getattr(x, attr)) for attr in attrs]
     return lambda x: [getattr(x, attr) for attr in attrs]
 
 
@@ -146,10 +147,13 @@ def process():
             if global_max_date is None or max_date > global_max_date:
                 global_max_date = max_date
 
-            try:
-                due_date = (datetime.now() + timedelta(days=due - mw.col.sched.today)).date() if queue != -1 else None
-            except:
-                due_date = None
+            due_date = date.min
+
+            if queue != -1:
+                try:
+                    due_date = (datetime.now() + timedelta(days=due - mw.col.sched.today)).date()
+                except:
+                    pass
 
             cards.append(Card(card_id, min_date, max_date, due_date, question, items))
 
